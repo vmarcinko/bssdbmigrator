@@ -37,19 +37,56 @@ public class MigratorImpl implements Migrator {
 
 	@Override
 	public void migrate() {
-//		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", true), Collections.emptyMap());
-//		migrateTable("users", Collections.emptyMap(), Collections.emptyMap());
-//		migrateTable("global_settings", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "max_bt_unit_price"));
-//		migrateTable("financial_reports", Collections.emptyMap(), Collections.emptyMap());
-
+		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", true), Collections.emptyMap());
 		migrateSequence("seq_partner");
 
-//		List<String> importNames = importJdbcTemplate.queryForList("select name from partners", String.class);
-//		System.out.println("importNames = " + importNames);
-//
-//		List<String> exportNames = exportJdbcTemplate.queryForList("select name from partners", String.class);
-//		System.out.println("exportNames = " + exportNames);
+		migrateTable("partner_tags", Collections.emptyMap(), Collections.emptyMap());
 
+		migrateTable("suspension_periods", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_suspension_period");
+
+		migrateTable("users", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_user");
+
+		migrateTable("service_elements", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_service_element");
+
+		migrateTable("bt_services", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("sc_services", Collections.emptyMap(), Collections.emptyMap());
+
+		migrateTable("global_settings", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "max_bt_unit_price"));
+
+		migrateTable("traffic_reports", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("traff_sms_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("traff_mms_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("traff_bt_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_traffic_report");
+
+		migrateTable("financial_reports", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_financial_report");
+
+		migrateTable("requests", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("request_bt_services", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("request_sc_services", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_request");
+
+		migrateTable("events", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_event");
+
+		migrateTable("documents", Collections.emptyMap(), Collections.emptyMap());
+		migrateSequence("seq_document");
+
+		migrateTable("price_lists", Collections.emptyMap(), Collections.emptyMap());
+
+		migrateTable("sms_mo_message_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("sms_throughput_usage_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("sms_tmo_mt_message_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("mms_mo_message_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("mms_throughput_usage_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("mms_tmo_mt_message_fees", Collections.emptyMap(), Collections.emptyMap());
+
+		migrateTable("profit_range_bonus_ptgs", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "range_start"));
+		migrateSequence("seq_price_list");
 	}
 
 	private void migrateSequence(String seqName) {
