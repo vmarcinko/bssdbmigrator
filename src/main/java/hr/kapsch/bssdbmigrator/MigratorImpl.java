@@ -5,8 +5,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -85,12 +87,33 @@ public class MigratorImpl implements Migrator {
 
 		migrateTable("profit_range_bonus_ptgs", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "range_start"));
 		migrateSequence("seq_price_list");
+
+		Function<Number, Boolean> userTypeConverter = userTypeValue -> userTypeValue.intValue() == 0 ? true : false;
+		migrateTable("subscribers", "subscriber_billings",
+				Collections.emptyMap(), Collections.singletonMap("user_type", "prepaid"), Collections.singletonMap("user_type", userTypeConverter));
+
+		Map<String, String> renamedColumns = new HashMap<>();
+		renamedColumns.put("roaming_status", "in_roaming");
+		renamedColumns.put("period_start", "interval_start");
+		renamedColumns.put("period_end", "interval_end");
+
+		migrateTable("roaming_history", "subscriber_roaming_intervals", Collections.emptyMap(), renamedColumns, Collections.emptyMap());
+
+		migrateSequence("seq_roaming_history", "seq_subscriber_roaming_interval");
 	}
 
 	private void migrateSequence(String seqName) {
-		logger.info("Migrating sequence {}", seqName);
-		Number currentValue = this.importJdbcTemplate.queryForObject("select " + seqName + ".nextval from dual", Number.class);
-		String exportSql = "select setval('" + seqName + "', " + currentValue.intValue() + ", true)";
+		migrateSequence(seqName, seqName);
+	}
+
+	private void migrateSequence(String importSeqName, String exportSeqName) {
+		importSeqName = importSeqName.toLowerCase();
+		exportSeqName = exportSeqName.toLowerCase();
+
+		logger.info("Migrating sequence from '{}' to '{}'", importSeqName, exportSeqName);
+
+		Number currentValue = this.importJdbcTemplate.queryForObject("select " + importSeqName + ".nextval from dual", Number.class);
+		String exportSql = "select setval('" + exportSeqName + "', " + currentValue.intValue() + ", true)";
 		this.exportJdbcTemplate.execute(exportSql);
 	}
 
@@ -99,23 +122,35 @@ public class MigratorImpl implements Migrator {
 		migrateTable(table, Collections.emptyMap(), Collections.emptyMap());
 	}
 
-	private void migrateTable(String table, Map<String, Object> newRequiredColumns, Map<String, String> renamedColumns) {
-		logger.info("Migrating table {}", table);
+	private void migrateTable(String importTable, Map<String, Object> newRequiredColumns, Map<String, String> renamedColumns) {
+		migrateTable(importTable, importTable, newRequiredColumns, renamedColumns, Collections.emptyMap());
+	}
 
-		final List<String> importColumnNames = extractColumnNames(this.importJdbcTemplate, table);
+	private void migrateTable(String importTable, String exportTable, Map<String, Object> newRequiredColumnsOriginal, Map<String, String> renamedColumnsOriginal, Map<String, Function> valueConvertersOriginal) {
+		importTable = importTable.toLowerCase();
+		exportTable = exportTable.toLowerCase();
+		Map<String, Object> newRequiredColumns = newRequiredColumnsOriginal.entrySet().stream()
+				.collect(Collectors.toMap(entry -> entry.getKey().toLowerCase(), Map.Entry::getValue));
+		Map<String, String> renamedColumns = renamedColumnsOriginal.entrySet().stream()
+				.collect(Collectors.toMap(entry -> entry.getKey().toLowerCase(), entry -> entry.getValue().toLowerCase()));
+		Map<String, Function> valueConverters = valueConvertersOriginal.entrySet().stream()
+				.collect(Collectors.toMap(entry -> entry.getKey().toLowerCase(), Map.Entry::getValue));
+
+		logger.info("Migrating from table '{}' to table '{}'", importTable, exportTable);
+
+		final List<String> importColumnNames = extractColumnNames(this.importJdbcTemplate, importTable);
 
 		final List<String> exportColumnNames = resolveExportColumnNames(newRequiredColumns, renamedColumns, importColumnNames);
 
 		List<Map<String, Object>> exportValues = new ArrayList<>();
 		RowCallbackHandler rch = rs -> {
-			Map<String, Object> row = convertToExportRowMap(importColumnNames, renamedColumns, rs);
+			Map<String, Object> row = convertToExportRowMap(importColumnNames, renamedColumns, valueConverters, rs);
 			row.putAll(newRequiredColumns);
 			exportValues.add(row);
 		};
-		importJdbcTemplate.query("select * from " + table, rch);
+		importJdbcTemplate.query("select * from " + importTable, rch);
 
-
-		SimpleJdbcInsert insert = new SimpleJdbcInsert(this.exportJdbcTemplate).withTableName(table).usingColumns(exportColumnNames.toArray(new String[0]));
+		SimpleJdbcInsert insert = new SimpleJdbcInsert(this.exportJdbcTemplate).withTableName(exportTable).usingColumns(exportColumnNames.toArray(new String[0]));
 		Map[] importedRowArray = exportValues.toArray(new Map[0]);
 		insert.executeBatch(importedRowArray);
 	}
@@ -128,12 +163,15 @@ public class MigratorImpl implements Migrator {
 		return exportColumnNames;
 	}
 
-	private Map<String, Object> convertToExportRowMap(List<String> columnNames, Map<String, String> renamedColumns, ResultSet rs) {
+	private Map<String, Object> convertToExportRowMap(List<String> columnNames, Map<String, String> renamedColumns, Map<String, Function> valueConverters, ResultSet rs) {
 		return columnNames.stream()
 				.filter(column -> extractColumnValue(rs, column) != null)
 				.collect(Collectors.toMap(
 						column -> renamedColumns.getOrDefault(column, column),
-						column -> extractColumnValue(rs, column)
+						column -> {
+							final Object originalValue = extractColumnValue(rs, column);
+							return valueConverters.containsKey(column) ? valueConverters.get(column).apply(originalValue) : originalValue;
+						}
 				));
 	}
 
@@ -159,6 +197,6 @@ public class MigratorImpl implements Migrator {
 		tableMetadataContext.setTableName(table);
 		tableMetadataContext.processMetaData(jdbcTemplate.getDataSource(), Collections.<String>emptyList(), new String[0]);
 
-		return tableMetadataContext.getTableColumns();
+		return tableMetadataContext.getTableColumns().stream().map(String::toLowerCase).collect(Collectors.toList());
 	}
 }
