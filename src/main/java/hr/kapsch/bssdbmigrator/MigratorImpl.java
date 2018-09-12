@@ -5,10 +5,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -40,50 +38,50 @@ public class MigratorImpl implements Migrator {
 		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", true), Collections.emptyMap());
 		migrateSequence("seq_partner");
 
-		migrateTable("partner_tags", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("partner_tags");
 
-		migrateTable("suspension_periods", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("suspension_periods");
 		migrateSequence("seq_suspension_period");
 
-		migrateTable("users", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("users");
 		migrateSequence("seq_user");
 
-		migrateTable("service_elements", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("service_elements");
 		migrateSequence("seq_service_element");
 
-		migrateTable("bt_services", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("sc_services", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("bt_services");
+		migrateTable("sc_services");
 
 		migrateTable("global_settings", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "max_bt_unit_price"));
 
-		migrateTable("traffic_reports", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("traff_sms_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("traff_mms_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("traff_bt_traffic_counts", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("traffic_reports");
+		migrateTable("traff_sms_traffic_counts");
+		migrateTable("traff_mms_traffic_counts");
+		migrateTable("traff_bt_traffic_counts");
 		migrateSequence("seq_traffic_report");
 
-		migrateTable("financial_reports", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("financial_reports");
 		migrateSequence("seq_financial_report");
 
-		migrateTable("requests", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("request_bt_services", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("request_sc_services", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("requests");
+		migrateTable("request_bt_services");
+		migrateTable("request_sc_services");
 		migrateSequence("seq_request");
 
-		migrateTable("events", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("events");
 		migrateSequence("seq_event");
 
-		migrateTable("documents", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("documents");
 		migrateSequence("seq_document");
 
-		migrateTable("price_lists", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("price_lists");
 
-		migrateTable("sms_mo_message_fees", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("sms_throughput_usage_fees", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("sms_tmo_mt_message_fees", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("mms_mo_message_fees", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("mms_throughput_usage_fees", Collections.emptyMap(), Collections.emptyMap());
-		migrateTable("mms_tmo_mt_message_fees", Collections.emptyMap(), Collections.emptyMap());
+		migrateTable("sms_mo_message_fees");
+		migrateTable("sms_throughput_usage_fees");
+		migrateTable("sms_tmo_mt_message_fees");
+		migrateTable("mms_mo_message_fees");
+		migrateTable("mms_throughput_usage_fees");
+		migrateTable("mms_tmo_mt_message_fees");
 
 		migrateTable("profit_range_bonus_ptgs", Collections.emptyMap(), Collections.singletonMap("MONETARY_AMOUNT", "range_start"));
 		migrateSequence("seq_price_list");
@@ -96,6 +94,10 @@ public class MigratorImpl implements Migrator {
 		this.exportJdbcTemplate.execute(exportSql);
 	}
 
+
+	private void migrateTable(String table) {
+		migrateTable(table, Collections.emptyMap(), Collections.emptyMap());
+	}
 
 	private void migrateTable(String table, Map<String, Object> newRequiredColumns, Map<String, String> renamedColumns) {
 		logger.info("Migrating table {}", table);
@@ -141,9 +143,9 @@ public class MigratorImpl implements Migrator {
 			if (value instanceof Blob) {
 				Blob blob = (Blob) value;
 				int length = (int) blob.length();
-				System.out.println("length = " + length);
 				return blob.getBytes(1, length);
-			} else {
+			}
+			else {
 				return value;
 			}
 		}
@@ -158,14 +160,5 @@ public class MigratorImpl implements Migrator {
 		tableMetadataContext.processMetaData(jdbcTemplate.getDataSource(), Collections.<String>emptyList(), new String[0]);
 
 		return tableMetadataContext.getTableColumns();
-	}
-
-	private Set<String> getColumnNames(ResultSet rs) throws SQLException {
-		Set<String> set = new HashSet<>();
-		for (int i = 0; i < rs.getMetaData().getColumnCount(); i++) {
-			String columnName = rs.getMetaData().getColumnName(i + 1);
-			set.add(columnName);
-		}
-		return set;
 	}
 }
