@@ -17,19 +17,23 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.metadata.TableMetaDataContext;
-import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Service;
 
 @Service
 public class MigratorImpl implements Migrator {
+	private static final int TX_BATCH_SIZE = 4000;
+
 	private final Logger logger = LoggerFactory.getLogger(MigratorImpl.class);
 
 	private final JdbcTemplate importJdbcTemplate;
 	private final JdbcTemplate exportJdbcTemplate;
+	private final TableRowExporter tableRowExporter;
 
 	public MigratorImpl(
 			@Qualifier("importJdbcTemplate") JdbcTemplate importJdbcTemplate,
-			@Qualifier("exportJdbcTemplate") JdbcTemplate exportJdbcTemplate) {
+			@Qualifier("exportJdbcTemplate") JdbcTemplate exportJdbcTemplate,
+			TableRowExporter tableRowExporter) {
+		this.tableRowExporter = tableRowExporter;
 		this.importJdbcTemplate = importJdbcTemplate;
 		this.exportJdbcTemplate = exportJdbcTemplate;
 	}
@@ -126,9 +130,10 @@ public class MigratorImpl implements Migrator {
 		migrateTable(importTable, importTable, newRequiredColumns, renamedColumns, Collections.emptyMap());
 	}
 
-	private void migrateTable(String importTable, String exportTable, Map<String, Object> newRequiredColumnsOriginal, Map<String, String> renamedColumnsOriginal, Map<String, Function> valueConvertersOriginal) {
+	private void migrateTable(String importTable, String exportTableOriginal, Map<String, Object> newRequiredColumnsOriginal, Map<String, String> renamedColumnsOriginal, Map<String, Function> valueConvertersOriginal) {
 		importTable = importTable.toLowerCase();
-		exportTable = exportTable.toLowerCase();
+		final String exportTable = exportTableOriginal.toLowerCase();
+
 		Map<String, Object> newRequiredColumns = newRequiredColumnsOriginal.entrySet().stream()
 				.collect(Collectors.toMap(entry -> entry.getKey().toLowerCase(), Map.Entry::getValue));
 		Map<String, String> renamedColumns = renamedColumnsOriginal.entrySet().stream()
@@ -147,12 +152,17 @@ public class MigratorImpl implements Migrator {
 			Map<String, Object> row = convertToExportRowMap(importColumnNames, renamedColumns, valueConverters, rs);
 			row.putAll(newRequiredColumns);
 			exportValues.add(row);
+
+			if (exportValues.size() > TX_BATCH_SIZE) {
+				tableRowExporter.exportToTable(exportTable, exportColumnNames, exportValues);
+				exportValues.clear();
+			}
 		};
 		importJdbcTemplate.query("select * from " + importTable, rch);
 
-		SimpleJdbcInsert insert = new SimpleJdbcInsert(this.exportJdbcTemplate).withTableName(exportTable).usingColumns(exportColumnNames.toArray(new String[0]));
-		Map[] importedRowArray = exportValues.toArray(new Map[0]);
-		insert.executeBatch(importedRowArray);
+		if (!exportValues.isEmpty()) {
+			tableRowExporter.exportToTable(exportTable, exportColumnNames, exportValues);
+		}
 	}
 
 	private List<String> resolveExportColumnNames(Map<String, Object> newRequiredColumns, Map<String, String> renamedColumns, List<String> importColumnNames) {
