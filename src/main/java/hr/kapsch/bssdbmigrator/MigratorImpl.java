@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MigratorImpl implements Migrator {
-	private static final int TX_BATCH_SIZE = 4000;
+	private static final int TX_BATCH_SIZE = 3;
 
 	private final Logger logger = LoggerFactory.getLogger(MigratorImpl.class);
 
