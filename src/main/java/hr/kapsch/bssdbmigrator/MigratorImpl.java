@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.metadata.TableMetaDataContext;
@@ -21,23 +22,24 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MigratorImpl implements Migrator {
-	private static final int TX_BATCH_SIZE = 3;
 
 	private final Logger logger = LoggerFactory.getLogger(MigratorImpl.class);
 
 	private final JdbcTemplate importJdbcTemplate;
 	private final JdbcTemplate exportJdbcTemplate;
 	private final TableRowExporter tableRowExporter;
+	private final int txBatchSize;
 
 	public MigratorImpl(
 			@Qualifier("importJdbcTemplate") JdbcTemplate importJdbcTemplate,
 			@Qualifier("exportJdbcTemplate") JdbcTemplate exportJdbcTemplate,
+			@Value("${txBatchSize}") int txBatchSize,
 			TableRowExporter tableRowExporter) {
 		this.tableRowExporter = tableRowExporter;
 		this.importJdbcTemplate = importJdbcTemplate;
 		this.exportJdbcTemplate = exportJdbcTemplate;
+		this.txBatchSize = txBatchSize;
 	}
-
 
 	@Override
 	public void migrate() {
@@ -153,7 +155,7 @@ public class MigratorImpl implements Migrator {
 			row.putAll(newRequiredColumns);
 			exportValues.add(row);
 
-			if (exportValues.size() > TX_BATCH_SIZE) {
+			if (exportValues.size() > txBatchSize) {
 				tableRowExporter.exportToTable(exportTable, exportColumnNames, exportValues);
 				exportValues.clear();
 			}

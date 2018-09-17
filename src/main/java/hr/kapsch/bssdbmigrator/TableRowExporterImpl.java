@@ -27,7 +27,7 @@ public class TableRowExporterImpl implements TableRowExporter {
 
 	@Transactional
 	public void exportToTable(String exportTable, List<String> exportColumnNames, List<Map<String, Object>> exportValues) {
-		logger.info("Exporting {} rows to table {}", exportValues.size(), exportTable);
+		logger.info("Exporting {} rows to table '{}'", exportValues.size(), exportTable);
 
 		final SimpleJdbcInsert insert = new SimpleJdbcInsert(this.exportJdbcTemplate).withTableName(exportTable).usingColumns(exportColumnNames.toArray(new String[0]));
 		Map[] importedRowArray = exportValues.toArray(new Map[0]);
