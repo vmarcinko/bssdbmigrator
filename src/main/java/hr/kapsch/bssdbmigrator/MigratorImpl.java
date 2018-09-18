@@ -3,6 +3,8 @@ package hr.kapsch.bssdbmigrator;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +45,8 @@ public class MigratorImpl implements Migrator {
 
 	@Override
 	public void migrate() {
+		Instant startTime = Instant.now();
+
 		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", true), Collections.emptyMap());
 		migrateSequence("seq_partner");
 
@@ -106,6 +110,9 @@ public class MigratorImpl implements Migrator {
 		migrateTable("roaming_history", "subscriber_roaming_intervals", Collections.emptyMap(), renamedColumns, Collections.emptyMap());
 
 		migrateSequence("seq_roaming_history", "seq_subscriber_roaming_interval");
+
+		Duration duration = Duration.between(startTime, Instant.now());
+		logger.info("Duration of migration: {} secs", duration.getSeconds());
 	}
 
 	private void migrateSequence(String seqName) {
