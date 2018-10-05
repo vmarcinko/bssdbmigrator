@@ -1,6 +1,7 @@
 package hr.kapsch.bssdbmigrator;
 
 import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -201,6 +202,10 @@ public class MigratorImpl implements Migrator {
 				Blob blob = (Blob) value;
 				int length = (int) blob.length();
 				return blob.getBytes(1, length);
+			} else if (value instanceof Clob) {
+				Clob clob = (Clob) value;
+				int length = (int) clob.length();
+				return clob.getSubString(1, length);
 			}
 			else {
 				return value;
