@@ -48,7 +48,7 @@ public class MigratorImpl implements Migrator {
 	public void migrate() {
 		Instant startTime = Instant.now();
 
-		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", true), Collections.emptyMap());
+		migrateTable("partners", Collections.singletonMap("cdr_traffic_enabled", false), Collections.emptyMap());
 		migrateSequence("seq_partner");
 
 		migrateTable("partner_tags");
