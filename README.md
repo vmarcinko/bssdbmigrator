@@ -1,4 +1,4 @@
-## Clear schema
+### Clear schema
 
 drop schema public cascade;
 create schema public;
